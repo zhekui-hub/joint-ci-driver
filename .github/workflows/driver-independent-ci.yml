@@ -1,0 +1,15 @@
+name: driver-independent-ci
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  driver-independent-ci:
+    name: driver-independent-ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exclusive / independent tests (repo-owned)
+        run: |
+          echo "driver-independent-ci: exclusive stub (NOT Arsenal public)"
+          # Formal exclusive test placeholder — must stay in this repo
+          exit 0
