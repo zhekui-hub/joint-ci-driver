@@ -15,43 +15,69 @@ jobs:
       - uses: actions/checkout@v4
       - name: Parse PR body and notify Arsenal (no public tests here)
         env:
-          GH_TOKEN: ${{ secrets.JOINT_CI_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISPATCH_TOKEN: ${{ secrets.JOINT_CI_DISPATCH_TOKEN }}
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          ROLE: driver
         run: |
           set -euo pipefail
-          BODY="${PR_BODY:-}"
-          echo "$BODY" > /tmp/pr_body.txt
+          echo "$PR_BODY" > /tmp/pr_body.txt
           CI_MODE=$(grep -E '^CI_MODE=' /tmp/pr_body.txt | head -1 | cut -d= -f2- | tr -d '[:space:]' || true)
           JOINT_WAIT=$(grep -E '^JOINT_WAIT=' /tmp/pr_body.txt | head -1 | cut -d= -f2- | tr -d '[:space:]' || true)
           JOINT_CI_ID=$(grep -E '^JOINT_CI_ID=' /tmp/pr_body.txt | head -1 | cut -d= -f2- | tr -d '[:space:]' || true)
-          echo "CI_MODE=$CI_MODE JOINT_WAIT=$JOINT_WAIT JOINT_CI_ID=$JOINT_CI_ID"
+          echo "CI_MODE=$CI_MODE JOINT_WAIT=$JOINT_WAIT JOINT_CI_ID=$JOINT_CI_ID ROLE=$ROLE"
           if [ "$CI_MODE" != "joint" ]; then
             echo "Not joint mode; skip Arsenal notify"
             exit 0
           fi
-          # Pending joint-ci only — Arsenal writes final conclusion
+          DRIVER_BR=$(grep -E '^DEPENDS_ON:[[:space:]]*zhekui-hub/joint-ci-driver@' /tmp/pr_body.txt | head -1 | sed 's/.*@//' | tr -d '[:space:]' || true)
+          SYNAPSE_BR=$(grep -E '^DEPENDS_ON:[[:space:]]*zhekui-hub/joint-ci-synapse@' /tmp/pr_body.txt | head -1 | sed 's/.*@//' | tr -d '[:space:]' || true)
+          WAIT_JSON=false
+          case "${JOINT_WAIT,,}" in true|1|yes) WAIT_JSON=true ;; esac
+          DRAFT_JSON=false
+          case "${IS_DRAFT,,}" in true|1) DRAFT_JSON=true ;; esac
           gh api "repos/${{ github.repository }}/statuses/${HEAD_SHA}" \
             -f state=pending -f context=joint-ci \
             -f description="waiting Arsenal public tests" \
             -f target_url="https://github.com/zhekui-hub/joint-ci-lab" || true
-          # Event-driven notify; do NOT wait for peer PRs; do NOT run public tests
           PAYLOAD=$(jq -n \
             --arg joint_id "${JOINT_CI_ID:-}" \
-            --arg repo "${{ github.repository }}" \
+            --arg repo "$ROLE" \
             --argjson pr "${PR_NUMBER}" \
             --arg sha "${HEAD_SHA}" \
             --arg ref "${HEAD_REF}" \
-            --arg wait "${JOINT_WAIT:-false}" \
-            --arg role "driver" \
-            '{event_type:"joint_report", client_payload:{joint_id:$joint_id, repo:$repo, pr:$pr, sha:$sha, ref:$ref, wait:$wait, role:$role, public_tests:["public.smoke"], exclusive_tests:["driver.exclusive"]}}')
+            --argjson wait "$WAIT_JSON" \
+            --argjson draft "$DRAFT_JSON" \
+            --arg driver_br "${DRIVER_BR:-}" \
+            --arg synapse_br "${SYNAPSE_BR:-}" \
+            '{
+              event_type: "joint_ci_report",
+              client_payload: {
+                joint_id: $joint_id,
+                schema_version: 1,
+                repo: $repo,
+                pr_number: $pr,
+                branch: $ref,
+                head_sha: $sha,
+                ci_mode: "joint",
+                joint_wait: $wait,
+                is_draft: $draft,
+                deps: {
+                  driver_branch: $driver_br,
+                  synapse_branch: $synapse_br
+                },
+                remote_tests: [ {id:"public.smoke", params:{profile:"default"}} ]
+              }
+            }')
           echo "$PAYLOAD" > /tmp/payload.json
-          # Cross-repo dispatch needs PAT with repo scope on lab; falls back gracefully
+          cat /tmp/payload.json
           TOKEN="${DISPATCH_TOKEN:-$GH_TOKEN}"
           if GH_TOKEN="$TOKEN" gh api repos/zhekui-hub/joint-ci-lab/dispatches --input /tmp/payload.json; then
-            echo "Dispatched joint_report to joint-ci-lab"
+            echo "Dispatched joint_ci_report to joint-ci-lab"
           else
-            echo "::warning::repository_dispatch failed (need JOINT_CI_DISPATCH_TOKEN secret). Hook still marked pending."
+            echo "::warning::repository_dispatch failed"
           fi
