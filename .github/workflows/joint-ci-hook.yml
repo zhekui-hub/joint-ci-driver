@@ -32,7 +32,7 @@ jobs:
             echo "Not joint mode; skip Arsenal notify"
             exit 0
           fi
-          # Pending joint-ci only — Arsenal writes final conclusion
+          # Pending joint-ci only 鈥?Arsenal writes final conclusion
           gh api "repos/${{ github.repository }}/statuses/${HEAD_SHA}" \
             -f state=pending -f context=joint-ci \
             -f description="waiting Arsenal public tests" \
@@ -46,12 +46,12 @@ jobs:
             --arg ref "${HEAD_REF}" \
             --arg wait "${JOINT_WAIT:-false}" \
             --arg role "driver" \
-            '{event_type:"joint_report", client_payload:{joint_id:$joint_id, repo:$repo, pr:$pr, sha:$sha, ref:$ref, wait:$wait, role:$role, public_tests:["public.smoke"], exclusive_tests:["driver.exclusive"]}}')
+            '{event_type:"joint_ci_report", client_payload:{joint_id:$joint_id, repo:$repo, pr:$pr, sha:$sha, ref:$ref, wait:$wait, role:$role, public_tests:["public.smoke"], exclusive_tests:["driver.exclusive"]}}')
           echo "$PAYLOAD" > /tmp/payload.json
           # Cross-repo dispatch needs PAT with repo scope on lab; falls back gracefully
           TOKEN="${DISPATCH_TOKEN:-$GH_TOKEN}"
           if GH_TOKEN="$TOKEN" gh api repos/zhekui-hub/joint-ci-lab/dispatches --input /tmp/payload.json; then
-            echo "Dispatched joint_report to joint-ci-lab"
+            echo "Dispatched joint_ci_report to joint-ci-lab"
           else
             echo "::warning::repository_dispatch failed (need JOINT_CI_DISPATCH_TOKEN secret). Hook still marked pending."
           fi
