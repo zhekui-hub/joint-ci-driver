@@ -1,0 +1,12 @@
+name: participant-joint-probe
+on:
+  workflow_dispatch:
+    inputs:
+      joint_id:
+        required: false
+        type: string
+jobs:
+  echo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "participant probe ok"
