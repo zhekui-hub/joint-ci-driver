@@ -1,0 +1,2 @@
+JOINT_CI_ID=exp-20260913-001
+CI_MODE=joint
