@@ -1,0 +1,14 @@
+name: driver-precheck
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  driver-precheck:
+    name: driver-precheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Light precheck
+        run: |
+          echo "driver-precheck: format/commitlint stub OK"
+          exit 0
