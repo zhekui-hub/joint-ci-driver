@@ -58,19 +58,21 @@ jobs:
               event_type: "joint_ci_report",
               client_payload: {
                 joint_id: $joint_id,
-                schema_version: 1,
-                repo: $repo,
-                pr_number: $pr,
-                branch: $ref,
-                head_sha: $sha,
-                ci_mode: "joint",
-                joint_wait: $wait,
-                is_draft: $draft,
-                deps: {
-                  driver_branch: $driver_br,
-                  synapse_branch: $synapse_br
-                },
-                remote_tests: [ {id:"public.smoke", params:{profile:"default"}} ]
+                reports: [{
+                  schema_version: 1,
+                  repo: $repo,
+                  pr_number: $pr,
+                  branch: $ref,
+                  head_sha: $sha,
+                  ci_mode: "joint",
+                  joint_wait: $wait,
+                  is_draft: $draft,
+                  deps: {
+                    driver_branch: $driver_br,
+                    synapse_branch: $synapse_br
+                  },
+                  remote_tests: [ {id:"public.smoke", params:{profile:"default"}} ]
+                }]
               }
             }')
           echo "$PAYLOAD" > /tmp/payload.json
