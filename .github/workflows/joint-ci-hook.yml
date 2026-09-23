@@ -36,6 +36,7 @@ jobs:
           fi
           DRIVER_BR=$(grep -E '^DEPENDS_ON:[[:space:]]*zhekui-hub/joint-ci-driver@' /tmp/pr_body.txt | head -1 | sed 's/.*@//' | tr -d '[:space:]' || true)
           SYNAPSE_BR=$(grep -E '^DEPENDS_ON:[[:space:]]*zhekui-hub/joint-ci-synapse@' /tmp/pr_body.txt | head -1 | sed 's/.*@//' | tr -d '[:space:]' || true)
+          SIM_BR=$(grep -E '^DEPENDS_ON:[[:space:]]*zhekui-hub/joint-ci-sim@' /tmp/pr_body.txt | head -1 | sed 's/.*@//' | tr -d '[:space:]' || true)
           WAIT_JSON=false
           case "${JOINT_WAIT,,}" in true|1|yes) WAIT_JSON=true ;; esac
           DRAFT_JSON=false
@@ -54,6 +55,7 @@ jobs:
             --argjson draft "$DRAFT_JSON" \
             --arg driver_br "${DRIVER_BR:-}" \
             --arg synapse_br "${SYNAPSE_BR:-}" \
+            --arg sim_br "${SIM_BR:-}" \
             '{
               event_type: "joint_ci_report",
               client_payload: {
@@ -69,7 +71,8 @@ jobs:
                   is_draft: $draft,
                   deps: {
                     driver_branch: $driver_br,
-                    synapse_branch: $synapse_br
+                    synapse_branch: $synapse_br,
+                    sim_branch: $sim_br
                   },
                   remote_tests: [ {id:"public.smoke", params:{profile:"default"}} ]
                 }]
